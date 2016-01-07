@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<views>
+    <view name="view1">
+
+        <select>
+            <field columnFamily="col_family" name="col" table="test"/>
+            <field columnFamily="col_family" name="foo" table="test"/>
+        </select>
+        <where>
+            <condition>
+                <field columnFamily="col_family" name="col"/>
+                <operand>equals</operand>
+                <argument type="value">
+                    <value>qq</value>
+                    <!-- field : <field columnFamily="cf2" name="c3">-->
+                </argument>
+            </condition>
+        </where>
+
+    </view>
+
+    <view name="view1">
+
+        <select>
+            <field columnFamily="col_family" name="col" table="test"/>
+        </select>
+
+    </view>
+
+    <!--<view name="view2">-->
+
+    <!--<select columnFamily="cf2" name="c3" table="test"/>-->
+
+    <!--</view>-->
+
+    <!--<view name="view3">-->
+
+    <!--<select columnFamily="cf2" name="c3" table="tab"/>-->
+    <!--<select columnFamily="cf1" name="c2" table="tab"/>-->
+
+    <!--&lt;!&ndash;  test with empty where &ndash;&gt;-->
+
+    <!--</view>-->
+
+    <view name="view4">
+
+        <select columnFamily="cf1" name="c1" table="tab"/>
+
+        <where>
+            <condition>
+                <field columnFamily="cf1" name="c1" table="tab"/>
+                <operand>greater</operand>
+                <argument type="value">
+                    <value>3</value>
+                    <!-- field : <field columnFamily="cf2" name="c3">-->
+                </argument>
+            </condition>
+        </where>
+    </view>
+
+
+</views>

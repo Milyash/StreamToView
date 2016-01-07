@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<tables>
+    <table name="test">
+        <columnFamily name="col_family">
+            <column name="col" dataType="string"></column>
+            <column name="foo" dataType="int"></column>
+        </columnFamily>
+    </table>
+    <table name="tab">
+        <columnFamily name="cf1">
+            <column name="c1" dataType="int"></column>
+            <column name="c2" dataType="string"></column>
+        </columnFamily>
+        <columnFamily name="cf2">
+            <column name="c3" dataType="string"></column>
+            <column name="c4" dataType="string"></column>
+        </columnFamily>
+    </table>
+</tables>
