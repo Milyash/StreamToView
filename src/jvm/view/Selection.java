@@ -1,10 +1,11 @@
 package view;
 
-import db.DBConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import table.tableupdate.*;
-import table.tableupdate.rowupdate.CellUpd;
+import table.tableupdate.CellUpd;
+import table.tableupdate.TableRowDeleteUpd;
+import table.tableupdate.TableRowPutUpd;
+import table.tableupdate.TableRowUpd;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,38 +13,23 @@ import java.util.ArrayList;
 /**
  * Created by milya on 27.11.15.
  */
-public class Selection {
+public class Selection extends ViewPart {
     private static Logger LOG = LoggerFactory.getLogger(Selection.class);
     private static final String VIEW_TYPE = "select";
-    protected String tableName;
     protected boolean isPersistent;
     private ArrayList<ViewField> fields;
 
-
     public Selection() {
         super();
-        fields = new ArrayList<>();
-    }
-
-    public Selection(String tableName, boolean isPersistent) {
-        this.tableName = tableName;
-        this.isPersistent = isPersistent;
-        this.fields = new ArrayList<>();
-    }
-
-    public Selection(String tableName) {
-        this.tableName = tableName;
         this.isPersistent = true;
         this.fields = new ArrayList<>();
     }
 
-    public String getTableName() {
-        return tableName;
+    public Selection(ArrayList<ViewField> fields) {
+        this.isPersistent = true;
+        this.fields = fields;
     }
 
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
 
     public boolean isPersistent() {
         return isPersistent;
@@ -65,40 +51,39 @@ public class Selection {
         fields.add(field);
     }
 
-    public String createTableName() {
-        StringBuilder sb = new StringBuilder("vt_" + VIEW_TYPE + "_" + tableName);
+    @Override
+    public String getId() {
+        StringBuilder sb = new StringBuilder(VIEW_TYPE + "-");
         for (ViewField field : fields) {
-            sb.append("-" + field.getFamilyName() + "_" + field.getColumnName());
+            sb.append("_" + field.getTableName() + "-" + field.getFamilyName() + "-" + field.getColumnName());
         }
         return sb.toString();
     }
 
-    public void processUpdate(TableRowUpd row, String viewName) {
-        if (row.getTableName().equals(viewName)) return;
+    @Override
+    public boolean processUpdate(TableRowUpd row, String viewName) {
+        if (row.getTableName().equals(viewName)) return true;
 
-        // LOG.error(name);
         try {
-            DBConnector conn = new DBConnector();
-            String tableName = row.getTableName();
-
-            if (!row.areUpdatedFieldsInList(fields)) return;// if updated are not used in view
+            if (!row.areViewFieldsUpdated(fields)) return true;// if updated are not used in view
 
             String pk = row.getPk();
             if (row instanceof TableRowPutUpd) {
                 if (!conn.isPkInTable(viewName, pk)) {
-                    ArrayList<CellUpd> additionalUpds = conn.getFieldsByPk(viewName, pk, row.getUnupdatedViewFields(fields));
+                    ArrayList<CellUpd> additionalUpds = conn.getTableFieldsByPk(row.getTableName(), pk, row.getUnUpdatedViewFields(fields));
                     row.addCellUpdates(additionalUpds);
                 }
-                conn.putFieldsByPk(viewName, pk, row.getUpdatedViewCellsUpdates(fields));
+
+                conn.putViewFieldsByPk(viewName, pk, row.getUpdatedViewCells(fields));
             } else if (row instanceof TableRowDeleteUpd) {
-                conn.deleteFieldsByPk(viewName, pk, row.getUpdatedFields());
+                conn.deleteViewFieldsByPk(viewName, pk, row.getUpdatedFields());
             }
+            return true;
 
-
-            conn.closeConnection();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return false;
     }
 
 
@@ -110,7 +95,6 @@ public class Selection {
     public String toString() {
         return "Selection{" +
                 "fields=" + fields +
-                ", tableName='" + tableName + '\'' +
                 '}';
     }
 }

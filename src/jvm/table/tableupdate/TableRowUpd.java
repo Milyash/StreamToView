@@ -1,15 +1,16 @@
 package table.tableupdate;
 
+import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import table.tableupdate.rowupdate.CellUpd;
-import table.tableupdate.rowupdate.DBRow;
 import table.value.ValueFabric;
 import view.ViewField;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by milya on 17.12.15.
@@ -17,15 +18,39 @@ import java.util.List;
 public class TableRowUpd implements Serializable {
     private static Logger LOG = LoggerFactory.getLogger(TableRowUpd.class);
     private String tableName;
-    private DBRow row;
+    private String pk;
+    private ArrayList<CellUpd> cellUpdates;
 
     public TableRowUpd(String tableName) {
         this.tableName = tableName;
+        this.cellUpdates = new ArrayList<>();
     }
 
-    public TableRowUpd(String tableName, DBRow row) {
+    public TableRowUpd(String tableName, String pk) {
         this.tableName = tableName;
-        this.row = row;
+        this.pk = pk;
+        this.cellUpdates = new ArrayList<>();
+    }
+
+    public TableRowUpd(String tableName, String pk, ArrayList<CellUpd> cellUpdates) {
+        this.tableName = tableName;
+        this.pk = pk;
+        this.cellUpdates = cellUpdates;
+    }
+
+    public TableRowUpd(String tableName, String pk, HashMap<ViewField, Object> fieldUpdates) {
+        this.tableName = tableName;
+        this.pk = pk;
+        this.cellUpdates = new ArrayList<>();
+        for (Map.Entry<ViewField, Object> fieldUpdate : fieldUpdates.entrySet()) {
+            this.cellUpdates.add(new CellUpd(false, fieldUpdate.getKey(), fieldUpdate.getValue()));
+        }
+    }
+
+    public TableRowUpd(String tableName, String pk, ViewField field, Object value) {
+        this.tableName = tableName;
+        this.pk = pk;
+        this.cellUpdates = Lists.newArrayList(new CellUpd(false, field, value));
     }
 
     public String getTableName() {
@@ -36,77 +61,86 @@ public class TableRowUpd implements Serializable {
         this.tableName = tableName;
     }
 
-    public DBRow getRow() {
-        return row;
-    }
-
-    public void setRow(DBRow rows) {
-        this.row = rows;
-    }
-
     public String getPk() {
-        return row.getPk();
+        return pk;
     }
 
     public void setPk(String pk) {
-        row.setPk(pk);
+        this.pk = pk;
     }
 
     public ArrayList<CellUpd> getCellUpdates() {
-        return row.getCellUpdates();
+        return cellUpdates;
     }
 
     public void setCellUpdates(ArrayList<CellUpd> cellUpdates) {
-        row.setCellUpdates(cellUpdates);
+        this.cellUpdates = cellUpdates;
     }
 
     public void addCellUpdate(CellUpd cellUpd) {
-        if (cellUpd == null) return;
-        if (row.getCellUpdates() == null) row.setCellUpdates(new ArrayList<CellUpd>());
-        row.addCellUpdate(cellUpd);
+        addCellUpdates(Lists.newArrayList(cellUpd));
     }
 
     public void addCellUpdates(List<CellUpd> cellUpds) {
-        row.addCellUpdates(cellUpds);
+        if (cellUpds == null || cellUpds.size() == 0) return;
+        if (cellUpdates == null) cellUpdates = new ArrayList<>();
+        cellUpdates.addAll(cellUpds);
     }
 
     public ArrayList<ViewField> getUpdatedFields() {
-        return row.getUpdatedFields();
-    }
-
-    public ArrayList<ViewField> getUnupdatedViewFields(ArrayList<ViewField> viewFields) {
-        return row.getUnUpdatedFieldsFromList(viewFields);
-    }
-
-    public ArrayList<ViewField> getUpdatedFieldsFromList(ArrayList<ViewField> viewFields) {
-        return row.getUpdatedFieldsFromList(viewFields);
-    }
-
-    public boolean areFieldsFromListUpdated(ViewField viewField) {
-        return row.areFieldsFromListUpdated(viewField);
+        ArrayList<ViewField> fields = new ArrayList<>();
+        for (CellUpd cellUpd : cellUpdates)
+            fields.add(cellUpd.getField());
+        return fields;
     }
 
     public Object getUpdatedValueByField(ViewField field) {
-        for (ViewField viewField : row.getUpdatedFields()) {
+        byte[] byteValue = null;
+        for (CellUpd cellUpd : cellUpdates) {
+            if (cellUpd.getField().equals(field)) {
+                byteValue = cellUpd.getValue();
+                break;
+            }
+        }
+        return ValueFabric.getValue(byteValue, field.getDataType());
+    }
 
-            if (field.equals(viewField))
-                return ValueFabric.getValue(row.getUpdatedValueByField(field), field.getDataType());
+    public byte[] getUpdatedValueBytesByField(ViewField field) {
+        for (CellUpd cellUpd : cellUpdates) {
+            if (cellUpd.getField().equals(field)) {
+                return cellUpd.getValue();
+            }
         }
         return null;
     }
 
-    public boolean areUpdatedFieldsInList(ArrayList<ViewField> viewFields) {
-        return getUpdatedFieldsFromList(viewFields).size() != 0;// if updated are not used in view
+
+    public ArrayList<ViewField> getUpdatedViewFields(ArrayList<ViewField> viewFields) {
+        return intersection(getUpdatedFields(), viewFields);
+        //retain doesn't work because it keeps the order of elements
     }
 
-    public ArrayList<CellUpd> getUpdatedViewCellsUpdates(ArrayList<ViewField> viewFields) {
-        ArrayList<ViewField> updatedFields = getUpdatedFields();
-        updatedFields.retainAll(viewFields); // updated fields and fields - intersection
+    public ArrayList<ViewField> getUnUpdatedViewFields(ArrayList<ViewField> viewFields) {
+        ArrayList<ViewField> fieldsCopy = (ArrayList<ViewField>) viewFields.clone();
+        fieldsCopy.removeAll(getUpdatedFields());
+        return fieldsCopy;
+    }
 
-//        LOG.error("****************** TableRowUpd getUpdatedViewCellsUpdates : " + getUpdatedFields() + "; retain: " + viewFields + "; result: " + updatedFields);
+    public boolean areViewFieldsUpdated(ViewField viewField) {
+        ArrayList<ViewField> viewFields = Lists.newArrayList(viewField);
+        return areViewFieldsUpdated(viewFields);
+    }
+
+    public boolean areViewFieldsUpdated(ArrayList<ViewField> viewFields) {
+        if (this instanceof TableRowDeleteUpd && cellUpdates.isEmpty()) return true;
+        return getUpdatedViewFields(viewFields).size() > 0;
+    }
+
+    public ArrayList<CellUpd> getUpdatedViewCells(ArrayList<ViewField> viewFields) {
+        ArrayList<ViewField> updatedFields = getUpdatedViewFields(viewFields);
 
         ArrayList<CellUpd> result = new ArrayList<>();
-        for (CellUpd cellUpd : row.getCellUpdates()) {
+        for (CellUpd cellUpd : cellUpdates) {
             if (updatedFields.contains(cellUpd.getField()))
                 result.add(cellUpd);
         }
@@ -117,7 +151,16 @@ public class TableRowUpd implements Serializable {
     public String toString() {
         return "TableRowUpd{" +
                 "tableName='" + tableName + '\'' +
-                ", row=" + row +
+                ", pk='" + pk + '\'' +
+                ", cellUpdates=" + cellUpdates +
                 '}';
+    }
+
+    private ArrayList<ViewField> intersection(ArrayList<ViewField> l1, ArrayList<ViewField> l2) {
+        ArrayList<ViewField> intersection = new ArrayList<>();
+        for (ViewField vf : l1)
+            if (l2.contains(vf))
+                intersection.add(vf);
+        return intersection;
     }
 }

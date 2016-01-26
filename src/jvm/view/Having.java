@@ -10,15 +10,15 @@ import java.io.IOException;
 /**
  * Created by milya on 19.12.15.
  */
-public class Where extends ViewPart {
-    private static Logger LOG = LoggerFactory.getLogger(Where.class);
-    private static final String VIEW_TYPE = "condition";
+public class Having extends ViewPart {
+    private static Logger LOG = LoggerFactory.getLogger(Having.class);
+    private static final String VIEW_TYPE = "having";
     protected Condition condition;
 
-    public Where() {
+    public Having() {
     }
 
-    public Where(Condition condition) {
+    public Having(Condition condition) {
         this.condition = condition;
     }
 
@@ -36,13 +36,13 @@ public class Where extends ViewPart {
 
     @Override
     public String getId() {
-        StringBuilder sb = new StringBuilder(VIEW_TYPE + "-" + condition.getId());
-        return sb.toString();
+        String id = VIEW_TYPE + "-" + condition.getId();
+        return id;
     }
 
     @Override
     public String toString() {
-        return "Where{" +
+        return "Having{" +
                 "condition=" + condition +
                 '}';
     }
@@ -84,13 +84,12 @@ public class Where extends ViewPart {
 
         try {
             if (!update.areViewFieldsUpdated(getField())) {
-                LOG.error("================== WHERE processUpdate : " + !update.getTableName().equals(getField().getTableName()) + " doesn't update where field " + !update.areViewFieldsUpdated(getField()));
-//                return conn.isPkInTable(viewName, update.getPk());
-                return isFieldInTableMeetsCondition(update);
+                LOG.error("================== HAVING processUpdate : " + !update.getTableName().equals(getField().getTableName())
+                        + " \n doesn't update having field " + !update.areViewFieldsUpdated(getField()));
+                return isFieldInTableMeetsCondition(update, viewName);
             }
 
-//            if (update instanceof TableRowPutUpd) {
-            return checkCondition(update, viewName);
+            return checkCondition(update);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -98,32 +97,21 @@ public class Where extends ViewPart {
         return false;
     }
 
-    private boolean checkCondition(TableRowUpd update, String viewName) {
+    private boolean checkCondition(TableRowUpd update) {
 //        try {
         Object valueToEvaluate = update.getUpdatedValueByField(condition.getField());
-        LOG.error("================== WHERE checkCondition: update " + update + " value reived: " + valueToEvaluate + " ? " + condition.getValueArgument());
+        LOG.error("================== HAVING checkCondition: update " + update + " value reived: " + valueToEvaluate + " ? " + condition.getValueArgument());
 
         boolean isConditionMet = condition.evaluate(valueToEvaluate);
 
-
-        LOG.error("================== WHERE checkCondition isConditionMet: " + isConditionMet + " ");
+        LOG.error("================== HAVING checkCondition isConditionMet: " + isConditionMet + " ");
 
         return isConditionMet;
-//            if (isConditionMet)
-//                return true;
-//            else {
-//                LOG.error("================== WHERE checkCondition delete pk: " + update.getPk() + " view: " + viewName);
-//                conn.deleteRowByPk(viewName, update.getPk());
-//                return false;
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        return false;
+
     }
 
-    private boolean isFieldInTableMeetsCondition(TableRowUpd update) throws IOException {
-        String tableName = update.getTableName();
+    private boolean isFieldInTableMeetsCondition(TableRowUpd update, String viewName) throws IOException {
+        String tableName = viewName;
         String pk = update.getPk();
         Object entryFieldValue = conn.getFieldByPk(tableName, pk, condition.getField());
         if (entryFieldValue == null) return false;

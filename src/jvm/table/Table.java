@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory;
 import table.value.Value;
 import utils.TableXMLDefinitionFacotry;
 import view.View;
+import view.ViewField;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,6 +16,7 @@ import java.util.List;
 public class Table {
     private static final Logger LOG = LoggerFactory.getLogger(Table.class);
     private String name;
+    private boolean storeHistory;
     private List<Field> fields;
     private List<View> views;
 
@@ -40,8 +43,32 @@ public class Table {
         this.name = name;
     }
 
+    public boolean isStoreHistory() {
+        return storeHistory;
+    }
+
+    public void setStoreHistory(boolean storeHistory) {
+        this.storeHistory = storeHistory;
+    }
+
     public List<Field> getFields() {
         return fields;
+    }
+
+    public ArrayList<ViewField> getViewFields() {
+        ArrayList<ViewField> viewFields = new ArrayList<>();
+        for (Field field : fields) {
+            viewFields.add(new ViewField(name, field));
+        }
+        return viewFields;
+    }
+
+    public ArrayList<String> getFieldsColumnFamilies() {
+        ArrayList<String> fieldColumnFamilies = new ArrayList<>();
+        for (Field field : fields)
+            if (!fieldColumnFamilies.contains(field.familyName))
+                fieldColumnFamilies.add(field.familyName);
+        return fieldColumnFamilies;
     }
 
     public void setFields(List<Field> fields) {

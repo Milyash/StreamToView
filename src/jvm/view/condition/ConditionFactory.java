@@ -1,7 +1,5 @@
 package view.condition;
 
-import view.condition.*;
-
 /**
  * Created by milya on 19.12.15.
  */
@@ -21,6 +19,7 @@ public class ConditionFactory {
         }
         return null;
     }
+
 
 
 }

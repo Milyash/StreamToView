@@ -10,6 +10,7 @@ import view.ViewField;
 public class Condition {
     private static Logger LOG = LoggerFactory.getLogger(Condition.class);
     private ViewField field;
+    protected String type;
     private boolean isValueArgument;
     private ViewField fieldArgument;
     private Object valueArgument;
@@ -79,7 +80,14 @@ public class Condition {
         return "General condition";
     }
 
-    ;
+    public String getId() {
+        StringBuilder sb = new StringBuilder(field.getTableName() + "-"
+                + field.getFamilyName() + "-"
+                + field.getColumnName() + "-"
+                + type + "-"
+                + valueArgument.toString());
+        return sb.toString();
+    }
 
     public Object getParameterValue() {
         if (isValueArgument) return valueArgument;
@@ -87,7 +95,7 @@ public class Condition {
     }
 
     public boolean evaluate(Object valueToEvaluate) {
-        LOG.error("------------------- CONDITION: false evaluator" );
+        LOG.error("------------------- CONDITION: false evaluator");
         return false;
     }
 

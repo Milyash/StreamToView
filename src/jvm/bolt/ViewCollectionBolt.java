@@ -13,30 +13,40 @@ import db.DBConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import table.Field;
-import table.tableupdate.*;
 import table.Table;
+import table.tableupdate.CellUpd;
+import table.tableupdate.TableRowDeleteUpd;
+import table.tableupdate.TableRowUpd;
 import utils.TableXMLDefinitionFacotry;
 import utils.TableXMLViewFactory;
-import view.Selection;
+import view.Const;
 import view.View;
+import view.ViewField;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by milya on 16.11.15.
  */
 public class ViewCollectionBolt implements IRichBolt {
-    private static Logger LOG = LoggerFactory.getLogger(ViewCollectionBolt.class);
-    public static final String LOG_STRING = "------ ViewCollectionBolt: ";
-    public static final String BOLT_NAME = "View Collection Bolt";
+    private static final Logger LOG = LoggerFactory.getLogger(ViewCollectionBolt.class);
+    private static final String LOG_STRING = "------ t: ";
+
     public static final String VIEW_SELECTION_DISTRIBUTION_STREAM = "View selection distribution stream";
     public static final String VIEW_WHERE_DISTRIBUTION_STREAM = "View where distribution stream";
-    public static final String VIEW_DISTRIBUTION_STREAM = "View distribution stream";
+    public static final String VIEW_AGGREGATES_DISTRIBUTION_STREAM = "View aggregates by distribution stream";
+    public static final String VIEW_HAVING_DISTRIBUTION_STREAM = "View having by distribution stream";
+
     public static final String UPDATE_DISTRIBUTION_STREAM = "ViewCollectionBolt: Update distribution stream";
 
     public OutputCollector _outputCollector;
     public Map<String, Table> tables;
     private boolean updateViews;
+    private final static DBConnector conn = new DBConnector();
 
     @Override
     public Map<String, Object> getComponentConfiguration() {
@@ -60,7 +70,10 @@ public class ViewCollectionBolt implements IRichBolt {
             updateViews = true;
         } else {
 
-            TableUpd tableUpdate = (TableUpd) tuple.getValueByField("update");
+            TableRowUpd tableUpdate = (TableRowUpd) tuple.getValueByField("update");
+
+            LOG.error(LOG_STRING + " get update: " + tableUpdate);
+
             if (tableUpdate == null) {
                 _outputCollector.ack(tuple);
                 return;
@@ -76,16 +89,37 @@ public class ViewCollectionBolt implements IRichBolt {
                     String viewName = view.getName();
                     _outputCollector.emit(VIEW_SELECTION_DISTRIBUTION_STREAM, tuple, new Values(viewName, view.getSelection()));
                     _outputCollector.emit(VIEW_WHERE_DISTRIBUTION_STREAM, tuple, new Values(viewName, view.getWhere()));
+                    _outputCollector.emit(VIEW_AGGREGATES_DISTRIBUTION_STREAM, tuple, new Values(viewName, view.getAggregates()));
+                    _outputCollector.emit(VIEW_HAVING_DISTRIBUTION_STREAM, tuple, new Values(viewName, view.getHaving()));
                 }
                 updateViews = false;
             }
 
-            for (TableRowUpd rowUpdate : tableUpdate.getTableRowUpdates()) {
-                _outputCollector.emit(UPDATE_DISTRIBUTION_STREAM, tuple, new Values(rowUpdate));
-//                LOG.error(LOG_STRING + " upd: " + rowUpdate.toString());
-            }
-        }
 
+            if (tableUpdate instanceof TableRowDeleteUpd && tableUpdate.getCellUpdates().isEmpty())
+                for (ViewField tableField : tables.get(tableName).getViewFields())
+                    tableUpdate.addCellUpdate(new CellUpd(true, tableField, null));
+
+            else {
+                try {
+                    ArrayList<CellUpd> updateCells = conn.getTableFieldsByPk(tableName,
+                            tableUpdate.getPk(),
+                            tableUpdate.getUnUpdatedViewFields(tables.get(tableName).getViewFields()));
+                    tableUpdate.addCellUpdates(updateCells);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            LOG.error(LOG_STRING + " tables: " + tables);
+            for (View view : tables.get(tableName).getViews()) {
+                LOG.error(LOG_STRING + " tables: " + tables.toString());
+                LOG.error(LOG_STRING + " emit: viewNAme: " + view.getName() + "; update: " + tableUpdate);
+                _outputCollector.emit(UPDATE_DISTRIBUTION_STREAM, tuple, new Values(view.getName(), tableUpdate));
+            }
+
+
+        }
 
         _outputCollector.ack(tuple);
     }
@@ -99,8 +133,7 @@ public class ViewCollectionBolt implements IRichBolt {
 
     private void updateTableViews() {
         for (String tableName : tables.keySet()) {
-            for (View view : TableXMLViewFactory.getViewsByTableName(tableName))
-                tables.get(tableName).addView(view);
+            tables.get(tableName).setViews(TableXMLViewFactory.getViewsByTableName(tableName));
         }
     }
 
@@ -119,15 +152,14 @@ public class ViewCollectionBolt implements IRichBolt {
 
         tables.put(tableName, table);
 
+        createHistoryTables(table);
         createViewTables(views);
-
     }
 
     private List<View> getViews() {
         List<View> views = new ArrayList<>();
         for (Map.Entry<String, Table> tableEntry : tables.entrySet()) {
             Table table = tableEntry.getValue();
-//            LOG.error(LOG_STRING + " getViews: table: " + table.toString());
             views.addAll(table.getViews());
         }
         return views;
@@ -141,13 +173,33 @@ public class ViewCollectionBolt implements IRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(VIEW_SELECTION_DISTRIBUTION_STREAM, new Fields("viewName", "selects"));
         outputFieldsDeclarer.declareStream(VIEW_WHERE_DISTRIBUTION_STREAM, new Fields("viewName", "wheres"));
-        outputFieldsDeclarer.declareStream(UPDATE_DISTRIBUTION_STREAM, new Fields("update"));
+        outputFieldsDeclarer.declareStream(UPDATE_DISTRIBUTION_STREAM, new Fields("viewName", "update"));
+        outputFieldsDeclarer.declareStream(VIEW_AGGREGATES_DISTRIBUTION_STREAM, new Fields("viewName", "aggregates"));
+        outputFieldsDeclarer.declareStream(VIEW_HAVING_DISTRIBUTION_STREAM, new Fields("viewName", "havings"));
     }
 
     private void createViewTables(ArrayList<View> views) {
-        DBConnector conn = new DBConnector();
         for (View view : views) {
             conn.createTable(view.getName());
+        }
+    }
+
+    private void createHistoryTables(Table table) {
+        try {
+            for (View view : table.getViews()) {
+                if (view.getMaxes() != null
+                        || view.getMins() != null
+                        || view.getSums() != null
+                        || view.getCounts() != null) {
+                    String historyTableName = Const.HISTORY_TABLE_NAME_PREFIX + table.getName();
+                    if (!conn.tableExists(historyTableName))
+                        conn.createTable(historyTableName, table.getFieldsColumnFamilies());
+
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

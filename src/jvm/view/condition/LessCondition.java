@@ -9,13 +9,14 @@ import view.ViewField;
  */
 public class LessCondition extends Condition {
     private static Logger LOG = LoggerFactory.getLogger(LessCondition.class);
-    private static final String type = "_less_";
 
     public LessCondition() {
+        type = "_less_";
     }
 
     public LessCondition(ViewField field, boolean isValueArgument, ViewField fieldArgument, Object valueArgument) {
         super(field, isValueArgument, fieldArgument, valueArgument);
+        type = "_less_";
     }
 
     public LessCondition(ViewField field, ViewField fieldArgument) {

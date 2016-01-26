@@ -4,6 +4,7 @@
         <columnFamily name="col_family">
             <column name="col" dataType="string"></column>
             <column name="foo" dataType="int"></column>
+            <column name="agg" dataType="string"></column>
         </columnFamily>
     </table>
     <table name="tab">

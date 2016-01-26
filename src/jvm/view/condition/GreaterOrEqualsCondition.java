@@ -9,13 +9,14 @@ import view.ViewField;
  */
 public class GreaterOrEqualsCondition extends Condition {
     private static Logger LOG = LoggerFactory.getLogger(GreaterOrEqualsCondition.class);
-    private static final String type = "_greaterOrEquals_";
 
     public GreaterOrEqualsCondition() {
+        type = "_greaterOrEquals_";
     }
 
     public GreaterOrEqualsCondition(ViewField field, boolean isValueArgument, ViewField fieldArgument, Object valueArgument) {
         super(field, isValueArgument, fieldArgument, valueArgument);
+        type = "_greaterOrEquals_";
     }
 
     public GreaterOrEqualsCondition(ViewField field, ViewField fieldArgument) {

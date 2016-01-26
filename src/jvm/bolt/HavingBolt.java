@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import table.tableupdate.TableRowDeleteUpd;
 import table.tableupdate.TableRowUpd;
-import view.Where;
+import view.Having;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,19 +19,19 @@ import java.util.Map;
 /**
  * Created by milya on 19.12.15.
  */
-public class WhereBolt implements IRichBolt {
-    private static final Logger LOG = LoggerFactory.getLogger(WhereBolt.class);
-    private static final String LOG_STRING = "------ WhereBolt: ";
+public class HavingBolt implements IRichBolt {
+    private static final Logger LOG = LoggerFactory.getLogger(HavingBolt.class);
+    private static final String LOG_STRING = "------ HavingBolt: ";
 
-    public static final String UPDATE_DISTRIBUTION_STREAM = "WhereBolt: Update distribution stream";
+    public static final String UPDATE_DISTRIBUTION_STREAM = "HavingBolt: Update distribution stream";
 
     public OutputCollector _outputCollector;
-    private HashMap<String, Where> wheres;
+    private HashMap<String, Having> havings;
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         _outputCollector = outputCollector;
-        wheres = new HashMap<>();
+        havings = new HashMap<>();
     }
 
     @Override
@@ -39,7 +39,7 @@ public class WhereBolt implements IRichBolt {
         String viewName = (String) tuple.getValueByField("viewName");
         switch (tuple.getSourceStreamId()) {
 
-            case (ViewCollectionBolt.UPDATE_DISTRIBUTION_STREAM):
+            case (AggregatesBolt.UPDATE_DISTRIBUTION_STREAM):
 
                 TableRowUpd update = (TableRowUpd) tuple.getValueByField("update");
 
@@ -51,29 +51,29 @@ public class WhereBolt implements IRichBolt {
                     _outputCollector.ack(tuple);
                     return;
                 }
-                if (wheres.get(viewName) == null) {
-                    LOG.error(LOG_STRING + " no wheres => pass of" + logString);
+                if (havings.get(viewName) == null) {
+                    LOG.error(LOG_STRING + " no havings => pass of" + logString);
                     _outputCollector.emit(UPDATE_DISTRIBUTION_STREAM, tuple, new Values(viewName, update));
                 } else {
-                    Where where = wheres.get(viewName);
+                    Having having = havings.get(viewName);
                     boolean passFurther;
 
-                    if (where == null)
+                    if (having == null)
                         passFurther = true;
                     else
-                        passFurther = where.processUpdate(update, viewName);
+                        passFurther = having.processUpdate(update, viewName);
 
                     if (passFurther == false)
                         update = new TableRowDeleteUpd(update.getTableName(), update.getPk());
 
-                    LOG.error(LOG_STRING + " where " + where + " is Met => pass of " + logString);
+                    LOG.error(LOG_STRING + " having " + having + " is Met => pass of " + logString);
                     _outputCollector.emit(UPDATE_DISTRIBUTION_STREAM, tuple, new Values(viewName, update));
                 }
                 break;
 
-            case (ViewCollectionBolt.VIEW_WHERE_DISTRIBUTION_STREAM):
-                Where where = (Where) tuple.getValueByField("wheres");
-                wheres.put(viewName, where); // todo or totally replace???
+            case (ViewCollectionBolt.VIEW_HAVING_DISTRIBUTION_STREAM):
+                Having having = (Having) tuple.getValueByField("havings");
+                havings.put(viewName, having); // todo or totally replace???
                 break;
         }
         _outputCollector.ack(tuple);

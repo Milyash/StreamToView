@@ -9,13 +9,14 @@ import view.ViewField;
  */
 public class LessOrEqualsCondition extends Condition {
     private static Logger LOG = LoggerFactory.getLogger(LessOrEqualsCondition.class);
-    private static final String type = "_lessOrEquals_";
 
     public LessOrEqualsCondition() {
+        type = "_lessOrEquals_";
     }
 
     public LessOrEqualsCondition(ViewField field, boolean isValueArgument, ViewField fieldArgument, Object valueArgument) {
         super(field, isValueArgument, fieldArgument, valueArgument);
+        type = "_lessOrEquals_";
     }
 
     public LessOrEqualsCondition(ViewField field, ViewField fieldArgument) {

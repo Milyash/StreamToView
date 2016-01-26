@@ -9,13 +9,14 @@ import view.ViewField;
  */
 public class EqualsCondition extends Condition {
     private static Logger LOG = LoggerFactory.getLogger(EqualsCondition.class);
-    private static final String type = "_equals_";
 
     public EqualsCondition() {
+        type = "_equals_";
     }
 
     public EqualsCondition(ViewField field, boolean isValueArgument, ViewField fieldArgument, Object valueArgument) {
         super(field, isValueArgument, fieldArgument, valueArgument);
+        type = "_equals_";
     }
 
     public EqualsCondition(ViewField field, ViewField fieldArgument) {

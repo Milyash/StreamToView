@@ -10,8 +10,11 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import table.tableupdate.CellUpd;
+import table.tableupdate.TableRowDeleteUpd;
 import table.tableupdate.TableRowUpd;
 import view.Selection;
+import view.ViewField;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,9 +23,10 @@ import java.util.Map;
  * Created by milya on 19.11.15.
  */
 public class SelectionBolt implements IRichBolt {
-    public static final String BOLT_NAME = "Select Bolt";
-    private static Logger LOG = LoggerFactory.getLogger(SelectionBolt.class);
-    private OutputCollector _outputCollector;
+    private static final Logger LOG = LoggerFactory.getLogger(SelectionBolt.class);
+    private static final String LOG_STRING = "------ SelectionBolt: ";
+
+    public OutputCollector _outputCollector;
     private Map<String, Selection> selections;
 
     @Override
@@ -33,29 +37,33 @@ public class SelectionBolt implements IRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        TableRowUpd tableUpdate = null;
-        String viewName = null;
+        String viewName = (String) tuple.getValueByField("viewName");
 
         switch (tuple.getSourceStreamId()) {
-            case (WhereBolt.UPDATE_DISTRIBUTION_STREAM):
-                tableUpdate = (TableRowUpd) tuple.getValueByField("update");
-                viewName = (String) tuple.getValueByField("viewName");
+            case (HavingBolt.UPDATE_DISTRIBUTION_STREAM):
+                TableRowUpd update = (TableRowUpd) tuple.getValueByField("update");
+                if (update == null) break;
+                String logString = " get: viewName: " + viewName + "; update: " + update;
+                LOG.error(LOG_STRING + logString);
 
                 if (!viewName.equals("")) {
                     if (selections.containsKey(viewName))
-                        selections.get(viewName).processUpdate(tableUpdate, viewName);
+                        selections.get(viewName).processUpdate(update, viewName);
                 } else
                     for (Map.Entry<String, Selection> selectionByViewName : selections.entrySet()) {
                         Selection selection = selectionByViewName.getValue();
                         viewName = selectionByViewName.getKey();
-                        selection.processUpdate(tableUpdate, viewName);
+                        if (update instanceof TableRowDeleteUpd && update.getCellUpdates().isEmpty()) {
+                            for (ViewField selectionField : selection.getFields())
+                                update.addCellUpdate(new CellUpd(true, selectionField, null));
+                        }
+                        selection.processUpdate(update, viewName);
                     }
 
-                _outputCollector.emit(tuple, new Values(tableUpdate));
+                _outputCollector.emit(tuple, new Values(update));
                 break;
 
             case (ViewCollectionBolt.VIEW_SELECTION_DISTRIBUTION_STREAM):
-                viewName = (String) tuple.getValueByField("viewName");
                 Selection selection = (Selection) tuple.getValueByField("selects");
                 selections.put(viewName, selection);
                 break;

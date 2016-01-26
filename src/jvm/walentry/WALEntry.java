@@ -3,10 +3,10 @@ package walentry;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.wal.WAL;
 import spout.AppConfig;
-import table.tableupdate.rowupdate.CellUpd;
-import table.tableupdate.rowupdate.DBDeleteRow;
-import table.tableupdate.rowupdate.DBPutRow;
-import table.tableupdate.rowupdate.DBRow;
+import table.tableupdate.CellUpd;
+import table.tableupdate.TableRowDeleteUpd;
+import table.tableupdate.TableRowPutUpd;
+import table.tableupdate.TableRowUpd;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -59,7 +59,7 @@ public class WALEntry implements Serializable {
                 '}';
     }
 
-    public ArrayList<DBRow> getDBRowList() {
+    public ArrayList<TableRowUpd> getTableRowList() {
         HashMap<String, ArrayList<CellUpd>> cellsByPk = new HashMap<>();
         for (Cell cell : cells) {
             if (cell.getColumnFamily().contains(AppConfig.SERVICE_COLUMN_FAMILY_NAME) || cell.getColumn().contains(AppConfig.SERVICE_COLUMN_NAME))
@@ -70,7 +70,7 @@ public class WALEntry implements Serializable {
             cellsByPk.get(pk).add(new CellUpd(cell, tableName));
         }
 
-        ArrayList<DBRow> rows = new ArrayList<>();
+        ArrayList<TableRowUpd> rows = new ArrayList<>();
         for (Map.Entry<String, ArrayList<CellUpd>> cellByPk : cellsByPk.entrySet()) {
             String pk = cellByPk.getKey();
             ArrayList cellsUpdList = cellByPk.getValue();
@@ -80,11 +80,11 @@ public class WALEntry implements Serializable {
                     isDeletion = false;
                     break;
                 }
-            DBRow dbRow = null;
+            TableRowUpd dbRow = null;
             if (isDeletion)
-                dbRow = new DBDeleteRow(pk, cellsUpdList);
+                dbRow = new TableRowDeleteUpd(tableName, pk, cellsUpdList);
             else
-                dbRow = new DBPutRow(pk, cellsUpdList);
+                dbRow = new TableRowPutUpd(tableName, pk, cellsUpdList);
             rows.add(dbRow);
         }
 

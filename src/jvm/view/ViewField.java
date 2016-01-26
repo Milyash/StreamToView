@@ -64,4 +64,9 @@ public class ViewField extends Field {
                     return true;
         return false;
     }
+
+    @Override
+    public int hashCode() {
+        return tableName.hashCode() + familyName.hashCode() + columnName.hashCode();
+    }
 }

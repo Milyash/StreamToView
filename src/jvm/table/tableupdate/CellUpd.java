@@ -1,4 +1,4 @@
-package table.tableupdate.rowupdate;
+package table.tableupdate;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import view.ViewField;
@@ -18,6 +18,11 @@ public class CellUpd implements Serializable {
         this.isDeletion = isDeletion;
         this.field = field;
         this.value = value;
+    }
+
+    public CellUpd(boolean isDeletion, ViewField field, Object value) {
+
+        this(isDeletion, field, getBytes(value));
     }
 
     public CellUpd(Cell cell, String tableName) {
@@ -48,6 +53,12 @@ public class CellUpd implements Serializable {
 
     public void setValue(byte[] value) {
         this.value = value;
+    }
+
+    private static byte[] getBytes(Object o) {
+        if (o != null)
+            return Bytes.toBytes(o.toString());
+        return null;
     }
 
     @Override

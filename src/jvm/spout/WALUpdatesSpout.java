@@ -7,7 +7,7 @@ import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 import org.slf4j.Logger;
-import table.tableupdate.TableUpd;
+import table.tableupdate.TableRowUpd;
 import walentry.WALEntry;
 
 import java.io.EOFException;
@@ -16,13 +16,13 @@ import java.io.ObjectInputStream;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.util.*;
+import java.util.Map;
 
 /**
  * Created by Milya on 20.05.2015.m97-639-038
  */
 public class WALUpdatesSpout extends BaseRichSpout {
+    public static final String LOG_STRING = "------ WALUpdatesSpout: ";
     private SpoutOutputCollector _outputCollector;
     private static Socket socket;
     private static ObjectInputStream ois;
@@ -46,11 +46,12 @@ public class WALUpdatesSpout extends BaseRichSpout {
         WALEntry walEntry = getTupleFromSocket();
 
         if (walEntry != null) {
-//            LOG.error("---------- START");
-            TableUpd tableUpd = new TableUpd(walEntry.getTableName(), walEntry.getDBRowList());
-            LOG.error(tableUpd.toString());
-            _outputCollector.emit(new Values(tableUpd));
-            LOG.warn(tableUpd.toString());
+
+            for (TableRowUpd rowUpdate : walEntry.getTableRowList()) {
+                LOG.error(LOG_STRING + " emit update: " + rowUpdate);
+                _outputCollector.emit(new Values(rowUpdate));
+            }
+
         }
 
     }

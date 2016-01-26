@@ -9,13 +9,14 @@ import view.ViewField;
  */
 public class GreaterCondition extends Condition {
     private static Logger LOG = LoggerFactory.getLogger(GreaterCondition.class);
-    private static final String type = "_greater_";
 
     public GreaterCondition() {
+        type = "_greater_";
     }
 
     public GreaterCondition(ViewField field, boolean isValueArgument, ViewField fieldArgument, Object valueArgument) {
         super(field, isValueArgument, fieldArgument, valueArgument);
+        type = "_greater_";
     }
 
     public GreaterCondition(ViewField field, ViewField fieldArgument) {
@@ -39,12 +40,12 @@ public class GreaterCondition extends Condition {
     public boolean evaluate(Object valueToEvaluate) {
         if (valueToEvaluate == null) return false;
 
-        String argument = (String) getParameterValue();
+        Object argument = getParameterValue();
         if (valueToEvaluate instanceof Integer)
-            return (Integer) valueToEvaluate > Integer.parseInt(argument);
+            return (Integer) valueToEvaluate > (Integer) argument;
 
         else if (valueToEvaluate instanceof String)
-            return ((String) valueToEvaluate).compareTo(argument) > 0;
+            return ((String) valueToEvaluate).compareTo((String) argument) > 0;
 
         return false;
     }
