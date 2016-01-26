@@ -39,12 +39,11 @@ public class EqualsCondition extends Condition {
     @Override
     public boolean evaluate(Object valueToEvaluate) {
 
-        String argument = (String) getParameterValue();
-        LOG.error("------------------- CONDITION: EqualsCondition " + valueToEvaluate + "->" + (valueToEvaluate instanceof String) + " ---- " + argument + "-->" + (argument instanceof String));
+        Object argument = getParameterValue();
         if (valueToEvaluate == null) return false;
 
         if (valueToEvaluate instanceof Integer)
-            return (Integer) valueToEvaluate == Integer.parseInt(argument);
+            return valueToEvaluate.equals(argument);
 
         else if (valueToEvaluate instanceof String)
             return ((String) valueToEvaluate).equals(argument);

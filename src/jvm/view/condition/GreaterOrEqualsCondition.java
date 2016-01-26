@@ -40,12 +40,12 @@ public class GreaterOrEqualsCondition extends Condition {
     public boolean evaluate(Object valueToEvaluate) {
         if (valueToEvaluate == null) return false;
 
-        String argument = (String) getParameterValue();
+        Object argument = getParameterValue();
         if (valueToEvaluate instanceof Integer)
-            return (Integer) valueToEvaluate >= Integer.parseInt(argument);
+            return (Integer) valueToEvaluate >= (Integer) argument;
 
         else if (valueToEvaluate instanceof String)
-            return ((String) valueToEvaluate).compareTo(argument) >= 0;
+            return ((String) valueToEvaluate).compareTo((String) argument) >= 0;
 
         return false;
     }
